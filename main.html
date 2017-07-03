@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>space invaders</title>
+
+
+	<script type="text/javascript">
+
+	window.onload = function() {
+		let canvas = document.getElementById('gt');
+		let context = canvas.getContext('2d');
+
+		let width = height = 400;
+
+		canvas.width = width;
+		canvas.height = height;
+
+		let alien_width         = alien_height = 15;
+		let alien_speed         = 0.1;
+		let alien_direction     = 1;
+
+		let special_alien_width      = 30;
+		let special_alien_height     = 15;
+		let special_alien_speed      = 1;
+		let special_aliens_positions = [];
+		let special_alien_score_target = 1000;
+
+		let player_width = player_height = 15;
+		let player_speed = 1;
+
+		let bullet_width  = 4;
+		let bullet_height = 14;
+		let bullet_speed  = 2;
+
+		let aliens_positions = [];
+		let bullet_positions = [];
+		let player_position  = [width/2, height-40];
+		let player_score     = 0;
+
+
+		let key_states   = {};
+		let key_pressed  = {};
+
+		window.onkeydown = function(evt) { 
+			key_states[evt.key] = true;
+		}
+
+		window.onkeyup = function(evt) { 
+			key_states[evt.key] = false;
+			key_pressed[evt.key] = true;
+		}
+
+
+		function setGameStartState(score) {
+			for ( let j = 0; j < 4; j++) 
+			for ( let i = 1; i < 10; i++ ) {
+				aliens_positions.push([(width/10 * i), 40+(j*40)]);
+			}	
+
+			alien_speed     = 0.1;
+			alien_direction = 1;
+			player_score    = score || 0;
+		}
+
+		function rectanglesCollide(rect_a, rect_b) {
+			if ( rect_a[0] > rect_b[0] + rect_b[2] ) return false;
+			if ( rect_a[1] > rect_b[1] + rect_b[3] ) return false;
+			if ( rect_a[0] + rect_a[2] < rect_b[0] ) return false;
+			if ( rect_a[1] + rect_a[3] < rect_b[1] ) return false;
+			return true;
+		}
+
+		function updateAndRender() {
+
+			if ( key_states['a'] ) {
+				player_position[0] -= player_speed;	
+			}
+
+ 			if ( key_states['d'] ) {
+ 				player_position[0] += player_speed;	
+			}
+
+			if ( key_pressed['j'] ) {
+				if ( bullet_positions.length < 1 )
+					bullet_positions.push([player_position[0], player_position[1]]);
+			}
+
+			if ( player_score == special_alien_score_target && special_aliens_positions == 0 ) {
+				special_aliens_positions.push([0-special_alien_width/2, 20 ] );
+				special_alien_score_target += 1000;
+			}
+
+			bullet_positions.forEach(function(b, i) {
+				bullet_positions[i][1] -= bullet_speed;
+
+				if ( b[1] < (0-bullet_height) ) {
+					bullet_positions.splice(i, 1);
+				}
+
+				aliens_positions.forEach(function(a, ii){
+
+					if ( rectanglesCollide( [b[0]-bullet_width/2, b[1]-bullet_height/2, bullet_width, bullet_height], 
+					                        [a[0]-alien_width/2, a[1]-alien_height/2, alien_width, alien_height]) ) {
+
+						bullet_positions.splice(i, 1);
+						aliens_positions.splice(ii, 1);
+
+						alien_speed += 0.025;
+						player_score += 100;
+					}
+				});
+
+				special_aliens_positions.forEach(function(a, ii) {
+					if ( rectanglesCollide( [b[0]-bullet_width/2, b[1]-bullet_height/2, bullet_width, bullet_height], 
+					                        [a[0]-special_alien_width/2, a[1]-special_alien_height/2, special_alien_width, special_alien_height]) ) {
+
+						bullet_positions.splice(ii, 1);
+						special_aliens_positions.splice(ii, 1);
+
+						alien_speed += 0.05;
+						player_score += 500;
+					}
+				});
+			});
+
+			if ( aliens_positions.length == 0 ) {
+				setGameStartState(player_score);
+			}
+			else {
+				aliens_positions.forEach(function(a, i) {
+					aliens_positions[i][0] += alien_speed * alien_direction;
+
+					if ( aliens_positions[i][0] > width || aliens_positions[i][0] < 0 ) {
+						alien_direction *= -1;
+
+						aliens_positions.forEach(function(aa, ii) {
+							aliens_positions[ii][1] += alien_height/1.5;
+						});
+					}
+					else if ( aliens_positions[i][1] > height ) {
+						setGameStartState();
+					}
+
+				});
+			}
+
+			special_aliens_positions.forEach(function(a, i) {
+				special_aliens_positions[i][0] += special_alien_speed;
+
+				if ( a[0] > width ) {
+					special_aliens_positions.splice(i, 1);
+				}
+			});
+
+			key_pressed = {};
+
+			// render
+			context.fillStyle = "#000";
+			context.fillRect(0, 0, width, height);
+
+			context.fillStyle = "#999";
+			context.fillRect(player_position[0] - player_width/2,
+			                 player_position[1] - player_height/2,
+			                 player_width, 
+			                 player_height);
+
+			special_aliens_positions.forEach(function(a, i) {
+				context.fillRect(a[0] - special_alien_width/2,
+				                 a[1] - special_alien_height/2,
+				                 special_alien_width,
+				                 special_alien_height);
+			});
+
+			aliens_positions.forEach(function(a, i){
+				context.fillRect(a[0] - alien_width/2,
+				                 a[1] - alien_height/2,
+				                 alien_width,
+				                 alien_height);
+			});
+
+			bullet_positions.forEach(function(b, i) {
+				context.fillRect(b[0] - bullet_width/2, 
+				                 b[1] - bullet_height/2,
+				                 bullet_width, 
+				                 bullet_height);
+			});
+
+			context.font = "18px sans-serif";
+			context.fillText(player_score, width-100, 20);
+
+			requestAnimationFrame(updateAndRender);
+		}
+
+		updateAndRender();
+	}
+
+	</script>
+</head>
+<body>
+<canvas id="gt"></canvas>
+</body>
+</html>
